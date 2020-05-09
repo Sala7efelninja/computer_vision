@@ -188,6 +188,7 @@ def CannyEdgeDetection(image,low,high):
     return edge_detection
 
 
+
 # step 7 helper
 def Sobel(image):
     kernel_X = [[-1, 0, 1],
