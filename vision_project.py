@@ -11,6 +11,7 @@
 # 9 apply hough transform to find the lanes
 # 10 apply the pipeline you developed to the challenge videos
 # 11 You should submit your code
+import random
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -35,7 +36,6 @@ def ReadVideo(path):
 
 
 # step2
-
 def RGB2HSV(image):
     return cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     #
@@ -145,7 +145,7 @@ def MaskGrayImage(image, mask):
     # result[mask == 255] = 0
     for h in range(height):
         for w in range(width):
-            if mask[h, w].all() == 0:
+            if np.all(mask[h, w] == 0):
                 result[h, w] = 0
     return result
 
@@ -181,23 +181,22 @@ def get_gaussian_kernel(size, sigma=0.5):
 def multiplyKernel(image, kernel):
     kernel = np.array(kernel)
 
-    image2 = np.pad(image, (((len(kernel[0] // 2)), (len(kernel[0] // 2))), (((len(kernel[1] // 2)), (
-        len(kernel[1] // 2))))), 'constant')
+    image2 = np.pad(image, (((len(kernel[0]) // 2), (len(kernel[0]) // 2)), (((len(kernel[1]) // 2), (
+        len(kernel[1]) // 2)))), 'constant')
     out = np.copy(image)
     (height, width) = image2.shape[:2]
-    for h in range(len(kernel[0] // 2), (height - len(kernel[0] // 2))):
-        # #print(h)
-        for w in range(len(kernel[1] // 2), (width - len(kernel[1] // 2))):
+    for h in range((len(kernel[0]) // 2), (height - (len(kernel[0]) // 2))):
+        for w in range((len(kernel[1]) // 2), (width - (len(kernel[1]) // 2))):
             tmp = image2[h - (len(kernel[0]) // 2):(1 + h + (len(kernel[0]) // 2)),
                   w - (len(kernel[1]) // 2):(1 + w + (len(kernel[1]) // 2))]
             value = tmp * kernel
-            out[h - len(kernel[0] // 2), w - len(kernel[1] // 2)] = np.sum(value)
+            out[h - (len(kernel[0]) // 2), w - (len(kernel[1]) // 2)] = np.sum(value)
 
     return out
 
 
 # step 7
-def CannyEdgeDetection(image, low, high):
+def CannyEdgeDetection(image, high, low):
     sobel, theta = Sobel(image)
     non_maximum_suppression = NonMaximumSuppression(sobel, theta)
     double_thresholding = DoubleThresholding(non_maximum_suppression, high, low)
@@ -206,7 +205,7 @@ def CannyEdgeDetection(image, low, high):
     # f, axarr = plt.subplots(2, 2)
     # axarr[0, 0].imshow(sobel, cmap='gray')
     # axarr[0, 1].imshow(non_maximum_suppression, cmap='gray')
-    # axarr[1, 0].imshow(double_thresholding)
+    # axarr[1, 0].imshow(double_thresholding, cmap='gray')
     # axarr[1, 1].imshow(edge_detection, cmap='gray')
     #
     # plt.show()
@@ -228,7 +227,7 @@ def Sobel(image):
     theta = np.arctan2(out_Y, out_X)
 
     out = np.sqrt(np.square(out_X) + np.square(out_Y))
-    out *= 255 / out.max()
+    out = out / out.max() * 255
 
     return out.astype(np.uint8), theta
 
@@ -239,7 +238,7 @@ def NonMaximumSuppression(image, theta):
     angle = theta * 180. / np.pi
     angle[angle < 0] += 180
     height, width = image.shape
-    out = np.zeros((height, width), dtype=np.uint8)
+    out = np.zeros(image.shape, dtype=np.uint8)
 
     for h in range(1, height - 1):
         for w in range(1, width - 1):
@@ -271,12 +270,12 @@ def NonMaximumSuppression(image, theta):
 def DoubleThresholding(image, high_threshold, low_threshold):
     height, width = image.shape
     out = np.copy(image)
-    for h in range(height - 1):
-        for w in range(width - 1):
+    for h in range(height):
+        for w in range(width):
             if image[h, w] >= high_threshold:
                 out[h, w] = 255
-            elif high_threshold >= image[h, w] >= low_threshold:
-                out[h, w] = 200
+            elif high_threshold > image[h, w] >= low_threshold:
+                out[h, w] = 125
             else:
                 out[h, w] = 0
     return out
@@ -285,12 +284,12 @@ def DoubleThresholding(image, high_threshold, low_threshold):
 # step 7 helper
 def HysteresisEdgeTracking(image, size=3):
     height, width = image.shape
-
     out = np.copy(image)
+
     for h in range(height):
         for w in range(width):
-            if out[h, w] == 200:
-                if out[(h - (size // 2)):(h + (size // 2) + 2), (w - (size // 2)):(w + (size // 2) + 2)].any == 255:
+            if image[h, w] == 125:
+                if 255 in image[(h - (size // 2)):(h + (size // 2) + 1), (w - (size // 2)):(w + (size // 2) + 1)]:
                     out[h, w] = 255
                 else:
                     out[h, w] = 0
@@ -311,6 +310,7 @@ def HoughTransofrm(image):
 
     out = np.zeros(image.shape)
     # edges = cv2.Canny(image, 50, 150, apertureSize=3)
+
     lines = cv2.HoughLines(image, 0.5, np.pi / 180, 30)
     for x in range(0, len(lines)):
         for rho, theta in lines[x]:
@@ -318,15 +318,111 @@ def HoughTransofrm(image):
             b = np.sin(theta)
             x0 = a * rho
             y0 = b * rho
-            x1 = int(x0 + 1 * (-b))
-            y1 = int(y0 + 1 * (a))
-            x2 = int(x0 - 1 * (-b))
-            y2 = int(y0 - 1 * (a))
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
 
             cv2.line(out, (x1, y1), (x2, y2), 255, 1)
     # plt.imshow(out, cmap='gray')
     # plt.show()
 
+    return out
+
+
+def line_detection_vectorized(image, edge_image, num_rhos=180, num_thetas=180, t_count=100):
+    out = np.copy(image)
+    edge_height, edge_width = edge_image.shape[:2]
+    edge_height_half, edge_width_half = edge_height // 2, edge_width // 2
+    #
+    d = np.sqrt(np.square(edge_height) + np.square(edge_width))
+    dtheta = 180 / num_thetas
+    drho = (2 * d) / num_rhos
+    #
+    thetas = np.arange(-90, 90, step=dtheta)
+    rhos = np.arange(-d, d, step=drho)
+    #
+    cos_thetas = np.cos(np.deg2rad(thetas))
+    sin_thetas = np.sin(np.deg2rad(thetas))
+    #
+    accumulator = np.zeros((len(rhos), len(thetas)))
+    #
+    # figure = plt.figure(figsize=(12, 12))
+    # subplot1 = figure.add_subplot(1, 4, 1)
+    # subplot1.imshow(image)
+    # subplot2 = figure.add_subplot(1, 4, 2)
+    # subplot2.imshow(edge_image, cmap="gray")
+    # subplot3 = figure.add_subplot(1, 4, 3)
+    # subplot3.set_facecolor((0, 0, 0))
+    # subplot4 = figure.add_subplot(1, 4, 4)
+    # subplot4.imshow(image)
+    #
+    edge_points = np.argwhere(edge_image != 0)
+    edge_points = edge_points - np.array([[edge_height_half, edge_width_half]])
+    #
+    rho_values = np.matmul(edge_points, np.array([sin_thetas, cos_thetas]))
+    #
+    accumulator, theta_vals, rho_vals = np.histogram2d(
+        np.tile(thetas, rho_values.shape[0]),
+        rho_values.ravel(),
+        bins=[thetas, rhos]
+    )
+    accumulator = np.transpose(accumulator)
+    # lines = np.argwhere(accumulator > t_count)
+
+    # for line in lines:
+    #     y, x = line
+    #     rho = rhos[y]
+    #     theta = thetas[x]
+    #     a = np.cos(np.deg2rad(theta))
+    #     b = np.sin(np.deg2rad(theta))
+    #     x0 = (a * rho) + edge_width_half
+    #     y0 = (b * rho) + edge_height_half
+    #     x1 = int(x0 + 1000 * (-b))
+    #     y1 = int(y0 + 1000 * (a))
+    #     x2 = int(x0 - 1000 * (-b))
+    #     y2 = int(y0 - 1000 * (a))
+    #     cv2.line(out, (x1, y1), (x2, y2), 125, 1)
+    #     # subplot3.plot([theta], [rho], marker='o', color="yellow")
+    #     # subplot4.add_line(mlines.Line2D([x1, x2], [y1, y2]))
+
+    rho, theta = np.where(accumulator[:, :(len(thetas) // 2) + 1] == np.amax(accumulator[:, :(len(thetas) // 2) + 1]))
+    a = np.cos(np.deg2rad(thetas[theta]))
+    b = np.sin(np.deg2rad(thetas[theta]))
+    x0 = (a * rhos[rho]) + edge_width_half
+    y0 = (b * rhos[rho]) + edge_height_half
+    x1 = int(x0 + 1000 * (-b))
+    y1 = int(y0 + 1000 * (a))
+    x2 = int(x0 - 1000 * (-b))
+    y2 = int(y0 - 1000 * (a))
+    cv2.line(out, (x1, y1), (x2, y2), 0, 1)
+
+    rho, theta = np.where(accumulator[:, len(thetas) // 2:] == np.amax(accumulator[:, len(thetas) // 2:]))
+    theta += (len(thetas) // 2)
+    a = np.cos(np.deg2rad(thetas[theta]))
+    b = np.sin(np.deg2rad(thetas[theta]))
+    x0 = (a * rhos[rho]) + edge_width_half
+    y0 = (b * rhos[rho]) + edge_height_half
+    x1 = int(x0 + 1000 * (-b))
+    y1 = int(y0 + 1000 * (a))
+    x2 = int(x0 - 1000 * (-b))
+    y2 = int(y0 - 1000 * (a))
+    cv2.line(out, (x1, y1), (x2, y2), 255, 1)
+
+    # subplot3.plot([theta], [rho], marker='o', color="yellow")
+    # subplot4.add_line(mlines.Line2D([x1, x2], [y1, y2]))
+
+    # subplot3.invert_yaxis()
+    # subplot3.invert_xaxis()
+    #
+    # subplot1.title.set_text("Original Image")
+    # subplot2.title.set_text("Edge Image")
+    # subplot3.title.set_text("Hough Space")
+    # subplot4.title.set_text("Detected Lines")
+    # plt.show()
+    # return accumulator, rhos, thetas
+    plt.imshow(out)
+    plt.show()
     return out
 
 
@@ -360,21 +456,23 @@ def main():
     start = datetime.now()
     # gaussian1 = Gaussian(mask, 1.5)  # step6
     # gaussian2 = Gaussian(mask1, 1)
-    gaussian3 = Gaussian(mask, 19, 5)
+    gaussian3 = Gaussian(mask, 15, 3)
     # gaussian4 = Gaussian(mask1, 3)
     print("gaussian", datetime.now() - start)
 
     gaussian = gaussian3
-
+    # plt.imshow(gaussian,cmap='gray')
+    # plt.show()
     start = datetime.now()
-    canny = CannyEdgeDetection(gaussian, 50, 100)  # step7
+    canny = CannyEdgeDetection(gaussian, 200, 50)  # step7
     print("canny", datetime.now() - start)
 
     start = datetime.now()
-    cannyMask = MaskGrayImage(gaussian, canny)  # step8
+    cannyMask = MaskGrayImage(grayImg, canny)  # step8
     print("cannyMask", datetime.now() - start)
 
-    houghTransform = HoughTransofrm(cannyMask)
+    # houghTransform = HoughTransofrm(cannyMask)
+    houghTransform = line_detection_vectorized(frame[0], cannyMask)
 
     # plt.imshow(cannyMask, cmap='gray')
     # plt.imshow(canny, cmap='gray')
@@ -384,20 +482,21 @@ def main():
     # plt.imshow(edges, cmap='gray')
 
     # plt.imshow(gaussian2,cmap='gray')
-    f, axarr = plt.subplots(3, 2)
-
-    axarr[0, 0].imshow(frame[0])
-    axarr[0, 1].imshow(thresholdImg, cmap='gray')
-
-    axarr[1, 0].imshow(mask, cmap='gray')
-    axarr[1, 1].imshow(gaussian, cmap='gray')
-
-    axarr[2, 0].imshow(canny, cmap='gray')
-    axarr[2, 1].imshow(cannyMask, cmap='gray')
-
-    # cv2.imwrite('canny1.jpg', canny)
-    # plt.imshow(edges, cmap='gray')
-    plt.show()
+    # f, axarr = plt.subplots(3, 2)
+    #
+    # axarr[0, 0].imshow(frame[0])
+    # axarr[0, 1].imshow(thresholdImg, cmap='gray')
+    #
+    # axarr[1, 0].imshow(mask, cmap='gray')
+    # axarr[1, 1].imshow(gaussian, cmap='gray')
+    #
+    # axarr[2, 0].imshow(canny, cmap='gray')
+    # axarr[2, 1].imshow(cannyMask, cmap='gray')
+    # plt.show()
+    #
+    # # cv2.imwrite('canny1.jpg', canny)
+    # plt.imshow(cannyMask, cmap='gray')
+    # plt.show()
 
     # print("total", datetime.now() - start0)
 
