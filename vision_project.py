@@ -182,7 +182,7 @@ def multiplyKernel(image, kernel):
     kernel = np.array(kernel)
 
     image2 = np.pad(image, (((len(kernel[0]) // 2), (len(kernel[0]) // 2)), (((len(kernel[1]) // 2), (
-        len(kernel[1]) // 2)))), 'constant')
+            len(kernel[1]) // 2)))), 'constant')
     out = np.copy(image)
     (height, width) = image2.shape[:2]
     for h in range((len(kernel[0]) // 2), (height - (len(kernel[0]) // 2))):
@@ -386,28 +386,30 @@ def line_detection_vectorized(image, edge_image, num_rhos=180, num_thetas=180, t
     #     # subplot3.plot([theta], [rho], marker='o', color="yellow")
     #     # subplot4.add_line(mlines.Line2D([x1, x2], [y1, y2]))
 
-    rho, theta = np.where(accumulator[:, :(len(thetas) // 2) + 1] == np.amax(accumulator[:, :(len(thetas) // 2) + 1]))
-    a = np.cos(np.deg2rad(thetas[theta]))
-    b = np.sin(np.deg2rad(thetas[theta]))
-    x0 = (a * rhos[rho]) + edge_width_half
-    y0 = (b * rhos[rho]) + edge_height_half
-    x1 = int(x0 + 1000 * (-b))
-    y1 = int(y0 + 1000 * (a))
-    x2 = int(x0 - 1000 * (-b))
-    y2 = int(y0 - 1000 * (a))
-    cv2.line(out, (x1, y1), (x2, y2), 0, 1)
+    rho1, theta1 = np.where(accumulator[:, :(len(thetas) // 2) + 1] == np.amax(accumulator[:, :(len(thetas) // 2) + 1]))
+    a1 = np.cos(np.deg2rad(thetas[theta1]))
+    b1 = np.sin(np.deg2rad(thetas[theta1]))
+    x01 = (a1 * rhos[rho1]) + edge_width_half
+    y01 = (b1 * rhos[rho1]) + edge_height_half
+    x11 = int(x01 + 1000 * (-b1))
+    y11 = int(y01 + 1000 * (a1))
+    x21 = int(x01 - 1000 * (-b1))
+    y21 = int(y01 - 1000 * (a1))
 
-    rho, theta = np.where(accumulator[:, len(thetas) // 2:] == np.amax(accumulator[:, len(thetas) // 2:]))
-    theta += (len(thetas) // 2)
-    a = np.cos(np.deg2rad(thetas[theta]))
-    b = np.sin(np.deg2rad(thetas[theta]))
-    x0 = (a * rhos[rho]) + edge_width_half
-    y0 = (b * rhos[rho]) + edge_height_half
-    x1 = int(x0 + 1000 * (-b))
-    y1 = int(y0 + 1000 * (a))
-    x2 = int(x0 - 1000 * (-b))
-    y2 = int(y0 - 1000 * (a))
-    cv2.line(out, (x1, y1), (x2, y2), 255, 1)
+    rho2, theta2 = np.where(accumulator[:, len(thetas) // 2:] == np.amax(accumulator[:, len(thetas) // 2:]))
+    theta2 += (len(thetas) // 2)
+    a2 = np.cos(np.deg2rad(thetas[theta2]))
+    b2 = np.sin(np.deg2rad(thetas[theta2]))
+    x02 = (a2 * rhos[rho2]) + edge_width_half
+    y02 = (b2 * rhos[rho2]) + edge_height_half
+    x12 = int(x02 + 1000 * (-b2))
+    y12 = int(y02 + 1000 * (a2))
+    x22 = int(x02 - 1000 * (-b2))
+    y22 = int(y02 - 1000 * (a2))
+
+    X, Y = point_of_intersection(x11, y11, x21, y21, x12, y12, x22, y22)
+    cv2.line(out, (x11, y11), (X, Y), 0, 8)
+    cv2.line(out, (x12, y12), (X, Y), 255, 8)
 
     # subplot3.plot([theta], [rho], marker='o', color="yellow")
     # subplot4.add_line(mlines.Line2D([x1, x2], [y1, y2]))
@@ -424,6 +426,19 @@ def line_detection_vectorized(image, edge_image, num_rhos=180, num_thetas=180, t
     plt.imshow(out)
     plt.show()
     return out
+
+
+def point_of_intersection(Ax1, Ay1, Ax2, Ay2, Bx1, By1, Bx2, By2):
+    Ma = (Ay2 - Ay1) / (Ax2 - Ax1)
+    Mb = (By2 - By1) / (Bx2 - Bx1)
+
+    # equation1 Y=mX-mX1+Y1
+
+    # intersection  equation1 A = equation1 B  y=y
+    X = ((Ma * Ax1) / (Ma - Mb)) - ((Ay1) / (Ma - Mb)) - ((Mb * Bx1) / (Ma - Mb)) + ((By1) / (Ma - Mb))
+    Y = Ma * X - Ma * Ax1 + Ay1
+
+    return int(X), int(Y)
 
 
 def main():
