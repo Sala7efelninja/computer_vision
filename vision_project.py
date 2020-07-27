@@ -201,14 +201,6 @@ def CannyEdgeDetection(image, high, low):
     non_maximum_suppression = NonMaximumSuppression(sobel, theta)
     double_thresholding = DoubleThresholding(non_maximum_suppression, high, low)
     edge_detection = HysteresisEdgeTracking(double_thresholding)
-
-    # f, axarr = plt.subplots(2, 2)
-    # axarr[0, 0].imshow(sobel, cmap='gray')
-    # axarr[0, 1].imshow(non_maximum_suppression, cmap='gray')
-    # axarr[1, 0].imshow(double_thresholding, cmap='gray')
-    # axarr[1, 1].imshow(edge_detection, cmap='gray')
-    #
-    # plt.show()
     return edge_detection
 
 
