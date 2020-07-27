@@ -422,9 +422,9 @@ def line_detection_vectorized(image, edge_image, num_rhos=180, num_thetas=180, t
     # subplot3.title.set_text("Hough Space")
     # subplot4.title.set_text("Detected Lines")
     # plt.show()
-    # return accumulator, rhos, thetas
-    plt.imshow(out)
-    plt.show()
+    # # return accumulator, rhos, thetas
+    # plt.imshow(out)
+    # plt.show()
     return out
 
 
@@ -446,49 +446,33 @@ def main():
     path2 = 'Yello Lane.mp4'
     path3 = 'Challenge.mp4'
 
-    from datetime import datetime
+    frames = ReadVideo(path1)  # step1
+    out = cv2.VideoWriter('video1', cv2.VideoWriter_fourcc(*'mp4v'), 20.0, frames[0].shape)
 
-    start = datetime.now()
-    frame = ReadVideo(path1)  # step1
-    print("frame", datetime.now() - start)
+    for frame in frames:
+        # start = datetime.now()
+        hsvImg = RGB2HSV(frame)  # step2
+        # print("RGB2HSV", datetime.now() - start)
 
-    start = datetime.now()
-    hsvImg = RGB2HSV(frame[0])  # step2
-    print("RGB2HSV", datetime.now() - start)
+        # start = datetime.now()
+        grayImg = RGB2Gray(frame)  # step3
+        # print("RGB2Gray", datetime.now() - start)
 
-    start = datetime.now()
-    grayImg = RGB2Gray(frame[0])  # step3
-    print("RGB2Gray", datetime.now() - start)
+        # start = datetime.now()
+        yellowThreshold, whiteThreshold, thresholdImg = HSV_Threshold(hsvImg)  # step4
+        # print("HSVthreshold", datetime.now() - start)
 
-    start = datetime.now()
-    yellowThreshold, whiteThreshold, thresholdImg = HSV_Threshold(hsvImg)  # step4
-    print("HSVthreshold", datetime.now() - start)
+        # start = datetime.now()
+        mask = MaskGrayImage(grayImg, thresholdImg)  # step5
 
-    start = datetime.now()
-    mask = MaskGrayImage(grayImg, thresholdImg)  # step5
-    print("mask", datetime.now() - start)
+        gaussian = Gaussian(mask, 15, 3)
+        canny = CannyEdgeDetection(gaussian, 200, 50)  # step7
 
-    start = datetime.now()
-    # gaussian1 = Gaussian(mask, 1.5)  # step6
-    # gaussian2 = Gaussian(mask1, 1)
-    gaussian3 = Gaussian(mask, 15, 3)
-    # gaussian4 = Gaussian(mask1, 3)
-    print("gaussian", datetime.now() - start)
+        cannyMask = MaskGrayImage(grayImg, canny)  # step8
+        houghTransform = line_detection_vectorized(frame, cannyMask)
 
-    gaussian = gaussian3
-    # plt.imshow(gaussian,cmap='gray')
-    # plt.show()
-    start = datetime.now()
-    canny = CannyEdgeDetection(gaussian, 200, 50)  # step7
-    print("canny", datetime.now() - start)
-
-    start = datetime.now()
-    cannyMask = MaskGrayImage(grayImg, canny)  # step8
-    print("cannyMask", datetime.now() - start)
-
-    # houghTransform = HoughTransofrm(cannyMask)
-    houghTransform = line_detection_vectorized(frame[0], cannyMask)
-
+        out.write(houghTransform)
+    out.release()
     # plt.imshow(cannyMask, cmap='gray')
     # plt.imshow(canny, cmap='gray')
     # plt.show()
